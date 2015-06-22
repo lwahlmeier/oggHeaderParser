@@ -20,7 +20,6 @@ import me.lcw.utils.Base64;
 import me.lcw.utils.BufferedRandomAccessFile;
 
 public class OggFile {
-  public static enum VORBIS_TAGS {TITLE, VERSION, ALBUM, TRACKNUMBER, ARTIST, PERFORMER, COPYRIGHT, GENRE, DATE, COVERART, METADATA_BLOCK_PICTURE, COMMENT};
   private static final String START_TAG = "OggS";
   private final File oggFile;
   private final String oggFilePath;
@@ -39,11 +38,11 @@ public class OggFile {
   private final int blocksize1;
   @SuppressWarnings("unused")
   private final int framing;
-  private final HashMap<VORBIS_TAGS, List<String>> tags;
+  private final HashMap<VorbisTags, List<String>> tags;
 
 
   protected OggFile(String oggFilePath, int version, int channels, int sampleRate, int bitRateMax, int bitRateNom, 
-      int bitRateMin, int blocksize0, int blocksize1, int framing, HashMap<VORBIS_TAGS, List<String>> tags) {
+      int bitRateMin, int blocksize0, int blocksize1, int framing, HashMap<VorbisTags, List<String>> tags) {
     this.oggFilePath = oggFilePath;
     this.oggFile = new File(oggFilePath);
     this.version = version;
@@ -57,19 +56,19 @@ public class OggFile {
     this.framing = framing;
     this.tags = tags;
 
-    if(getFirstTag(VORBIS_TAGS.ARTIST) == null && getFirstTag(VORBIS_TAGS.TITLE) == null) {
+    if(getFirstTag(VorbisTags.ARTIST) == null && getFirstTag(VorbisTags.TITLE) == null) {
       String[] tmp = oggFile.getName().split("-");
       if(tmp.length == 2) {
         List<String> artList = new ArrayList<String>();
         List<String> titleList = new ArrayList<String>();
         artList.add(tmp[0].replace(".", " "));
         titleList.add(tmp[1].substring(0, tmp[1].length()-4).replace(".", " "));
-        tags.put(VORBIS_TAGS.ARTIST, Collections.unmodifiableList(artList));
-        tags.put(VORBIS_TAGS.TITLE, Collections.unmodifiableList(titleList));
+        tags.put(VorbisTags.ARTIST, Collections.unmodifiableList(artList));
+        tags.put(VorbisTags.TITLE, Collections.unmodifiableList(titleList));
       } else if (oggFile.getName().length() > 4){
         List<String> artList = new ArrayList<String>();
         artList.add(oggFile.getName().substring(0, oggFile.getName().length()-4));
-        tags.put(VORBIS_TAGS.ARTIST, Collections.unmodifiableList(artList));
+        tags.put(VorbisTags.ARTIST, Collections.unmodifiableList(artList));
       }
     }
   }
@@ -90,11 +89,11 @@ public class OggFile {
     return sampleRate;
   }
   
-  public List<String> getListOfTags(VORBIS_TAGS tag) {
+  public List<String> getListOfTags(VorbisTags tag) {
     return tags.get(tag);
   }
 
-  public String getFirstTag(VORBIS_TAGS tag) {
+  public String getFirstTag(VorbisTags tag) {
     List<String> sl = tags.get(tag);
     if(sl == null) {
       return null;
@@ -103,23 +102,23 @@ public class OggFile {
   }
   
   public String getTitle() {
-    return getFirstTag(VORBIS_TAGS.TITLE);
+    return getFirstTag(VorbisTags.TITLE);
   }
   
   public String getArtist() {
-    return getFirstTag(VORBIS_TAGS.ARTIST);
+    return getFirstTag(VorbisTags.ARTIST);
   }
   
   public String getAlbum() {
-    return getFirstTag(VORBIS_TAGS.ALBUM);
+    return getFirstTag(VorbisTags.ALBUM);
   }
   
   public BufferedImage getCover() throws IOException {
-    if(getFirstTag(VORBIS_TAGS.COVERART) != null) {
-      return ImageIO.read(new ByteArrayInputStream(Base64.decode(getFirstTag(VORBIS_TAGS.COVERART))));
+    if(getFirstTag(VorbisTags.COVERART) != null) {
+      return ImageIO.read(new ByteArrayInputStream(Base64.decode(getFirstTag(VorbisTags.COVERART))));
     }
-    if(getFirstTag(VORBIS_TAGS.METADATA_BLOCK_PICTURE) != null) {
-      for(String s: getListOfTags(VORBIS_TAGS.METADATA_BLOCK_PICTURE)) {
+    if(getFirstTag(VorbisTags.METADATA_BLOCK_PICTURE) != null) {
+      for(String s: getListOfTags(VorbisTags.METADATA_BLOCK_PICTURE)) {
         ByteBuffer bb = ByteBuffer.wrap(Base64.decode(s));
         if(bb.getInt() == 3) {
           int mime_len = bb.getInt();
@@ -140,7 +139,7 @@ public class OggFile {
     return null;
   }
 
-  public Map<VORBIS_TAGS, List<String>> getAllTag() {
+  public Map<VorbisTags, List<String>> getAllTag() {
     return Collections.unmodifiableMap(tags);
   }
 
@@ -160,60 +159,63 @@ public class OggFile {
     int blocksize0= 0;
     int blocksize1= 0;
     int framing= 0;
-    HashMap<VORBIS_TAGS, List<String>> tags = new HashMap<VORBIS_TAGS, List<String>>();
+    HashMap<VorbisTags, List<String>> tags = new HashMap<VorbisTags, List<String>>();
     
-    RandomAccessFile raf = new BufferedRandomAccessFile(oggFile, "r", 1024*32);
-    List<OggHeader> headers = new ArrayList<OggHeader>();
-    while(headers.size() < 10 && (!foundTags || !foundStats)) {
-      OggHeader h = parseHeader(raf, true);
-      for(Segment cseg: h.segments) {
-        if(cseg.bb.remaining() > 7) {
-          int vorbis_tag_id =  cseg.bb.get();
-          byte[] ba = new byte[6];
-          cseg.bb.get(ba);
-          String vorbis_tag = new String(ba);
-          if(vorbis_tag_id == 1 && vorbis_tag.equals("vorbis")) {
-            foundStats = true;
-            version = cseg.bb.getInt();
-            channels = cseg.bb.get();
-            sampleRate = cseg.bb.getInt();
-            bitRateMax = cseg.bb.getInt();
-            bitRateNom = cseg.bb.getInt();
-            bitRateMin = cseg.bb.getInt();
-          } else if (vorbis_tag_id == 3 && vorbis_tag.equals("vorbis")) {
-            foundTags = true;
-            cseg.bb.order(ByteOrder.LITTLE_ENDIAN);
-            int ts = cseg.bb.getInt();
-            byte[] tba = new byte[ts];
-            cseg.bb.get(tba);
-            //String ventag = new String(tba);
-            int tag_number = cseg.bb.getInt();
-            for(int i=0; i<tag_number; i++) {
-              int tag_l = cseg.bb.getInt();
-              byte[] tag_ba = new byte[tag_l];
-              cseg.bb.get(tag_ba);
-              String ttag = new String(tag_ba);
-              String[] tmp = ttag.split("=");
-              if(tmp.length == 2) {
-                try{
-                  VORBIS_TAGS enumvTag = VORBIS_TAGS.valueOf(tmp[0].toUpperCase());
-                  List<String> nList = new ArrayList<String>();
-                  if(tags.get(enumvTag) != null) {
-                    nList.addAll(tags.get(enumvTag));
+    RandomAccessFile raf = new BufferedRandomAccessFile(oggFile, "r", 1024*32);    
+    try{
+      List<OggHeader> headers = new ArrayList<OggHeader>();
+      while(headers.size() < 10 && (!foundTags || !foundStats)) {
+        OggHeader h = parseHeader(raf, true);
+        for(Segment cseg: h.segments) {
+          if(cseg.bb.remaining() > 7) {
+            int vorbis_tag_id =  cseg.bb.get();
+            byte[] ba = new byte[6];
+            cseg.bb.get(ba);
+            String vorbis_tag = new String(ba);
+            if(vorbis_tag_id == 1 && vorbis_tag.equals("vorbis")) {
+              foundStats = true;
+              version = cseg.bb.getInt();
+              channels = cseg.bb.get();
+              sampleRate = cseg.bb.getInt();
+              bitRateMax = cseg.bb.getInt();
+              bitRateNom = cseg.bb.getInt();
+              bitRateMin = cseg.bb.getInt();
+            } else if (vorbis_tag_id == 3 && vorbis_tag.equals("vorbis")) {
+              foundTags = true;
+              cseg.bb.order(ByteOrder.LITTLE_ENDIAN);
+              int ts = cseg.bb.getInt();
+              byte[] tba = new byte[ts];
+              cseg.bb.get(tba);
+              //String ventag = new String(tba);
+              int tag_number = cseg.bb.getInt();
+              for(int i=0; i<tag_number; i++) {
+                int tag_l = cseg.bb.getInt();
+                byte[] tag_ba = new byte[tag_l];
+                cseg.bb.get(tag_ba);
+                String ttag = new String(tag_ba);
+                String[] tmp = ttag.split("=");
+                if(tmp.length == 2) {
+                  try{
+                    VorbisTags enumvTag = VorbisTags.valueOf(tmp[0].toUpperCase());
+                    List<String> nList = new ArrayList<String>();
+                    if(tags.get(enumvTag) != null) {
+                      nList.addAll(tags.get(enumvTag));
+                    }
+                    nList.add(tmp[1]);
+                    tags.put(enumvTag, Collections.unmodifiableList(nList));
+                  } catch(IllegalArgumentException e) {
+                    //TODO: might look into making the key a string and allowing any arbitrary tags
                   }
-                  nList.add(tmp[1]);
-                  tags.put(enumvTag, Collections.unmodifiableList(nList));
-                } catch(IllegalArgumentException e) {
-                  //We just skip adding it.
                 }
               }
             }
           }
         }
+        headers.add(h);
       }
-      headers.add(h);
+    }finally {
+      raf.close();
     }
-    raf.close();
     if(foundTags && foundStats) {
       return new OggFile(oggFile.getAbsolutePath(), version, channels, sampleRate, bitRateMax, bitRateNom,  bitRateMin, blocksize0, blocksize1, framing, tags);
     } else {
@@ -240,10 +242,8 @@ public class OggFile {
     int segs = raf.read();
     LinkedList<Integer> segSizes = new LinkedList<Integer>();
     int last = 0;
-    //int total = 0;
     for(int i=0;i<segs;i++) {
       int size = raf.read();
-      //total+=size;
       if(last == 255) {
         int tmp = segSizes.pollLast();
         tmp+=size;
@@ -255,7 +255,6 @@ public class OggFile {
     }
     Segment[] segments = new Segment[segSizes.size()];
     for(int i=0; i<segSizes.size(); i++) {
-      //System.out.println("page-size:"+segSizes.get(i));
       byte[] ba = new byte[segSizes.get(i)];
       raf.read(ba);
       segments[i] = new Segment();
@@ -295,7 +294,5 @@ public class OggFile {
     int size;
     ByteBuffer bb;
     int last;
-    
-    
   }
 }

@@ -34,8 +34,7 @@ package me.lcw.utils;
  */
 public class Base64 {
   private static byte[] encodeData;
-  private static String charSet = 
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  private static String charSet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
   static {
     encodeData = new byte[64];
@@ -56,7 +55,7 @@ public class Base64 {
   }
 
   public static String encode(byte[] src, int start, int length) {
-    byte[] dst = new byte[(length+2)/3 * 4 + length/72];
+    byte[] dst = new byte[(length+2)/3 * 4 ];
     int x = 0;
     int dstIndex = 0;
     int state = 0;  // which char in pattern
@@ -70,12 +69,10 @@ public class Base64 {
         dst[dstIndex++] = encodeData[(x>>2) & 0x3f];
         break;
       case 2:
-        dst[dstIndex++] = encodeData[((old<<4)&0x30) 
-                                     | ((x>>4)&0xf)];
+        dst[dstIndex++] = encodeData[((old<<4)&0x30) | ((x>>4)&0xf)];
         break;
       case 3:
-        dst[dstIndex++] = encodeData[((old<<2)&0x3C) 
-                                     | ((x>>6)&0x3)];
+        dst[dstIndex++] = encodeData[((old<<2)&0x3C) | ((x>>6)&0x3)];
         dst[dstIndex++] = encodeData[x&0x3F];
         state = 0;
         break;
@@ -83,10 +80,6 @@ public class Base64 {
         break;
       }
       old = x;
-      if (++len >= 72) {
-        dst[dstIndex++] = (byte) '\n';
-        len = 0;
-      }
     }
 
     // now clean up the end bytes

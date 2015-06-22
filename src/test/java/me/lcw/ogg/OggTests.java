@@ -1,15 +1,17 @@
 package me.lcw.ogg;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.Random;
 
 import me.lcw.utils.Base64;
 
@@ -17,15 +19,15 @@ import org.junit.Test;
 
 public class OggTests {
   
-  public static String hashByteArray(byte[] data) throws NoSuchAlgorithmException, IOException {
-    MessageDigest md = MessageDigest.getInstance("SHA-256");
-    md.update(data);
-    byte[] mdbytes = md.digest();
-    StringBuffer sb = new StringBuffer();
-    for (int i = 0; i < mdbytes.length; i++) {
-      sb.append(Integer.toString((mdbytes[i] & 0xff) + 0x100, 16).substring(1));
+  @Test
+  public void t2() throws IOException, NoSuchAlgorithmException {
+    Random rnd = new Random();
+    for(int i=1; i<201; i++) {
+      byte[] ba = new byte[i];
+      rnd.nextBytes(ba);
+      String s = Base64.encode(ba);
+      assertTrue(Arrays.equals(ba, Base64.decode(s)));
     }
-    return sb.toString();
   }
 
   @Test
@@ -33,6 +35,8 @@ public class OggTests {
     String filename = ClassLoader.getSystemClassLoader().getResource("Simple-Test.ogg").getFile();
     OggFile ohp = OggFile.parse(filename);
     System.out.println(filename);
+    assertEquals("Test", ohp.getTitle());
+    assertEquals("Simple", ohp.getArtist());
   }
   
   @Test
@@ -40,10 +44,10 @@ public class OggTests {
     String filename = ClassLoader.getSystemClassLoader().getResource("silence.ogg").getFile();
     OggFile ohp = OggFile.parse(filename);
     System.out.println(filename);
-    for(Entry<OggFile.VORBIS_TAGS, List<String>> entry: ohp.getAllTag().entrySet()) {
+    for(Entry<VorbisTags, List<String>> entry: ohp.getAllTag().entrySet()) {
       for(String s: entry.getValue()) {
         System.out.println(entry.getKey()+":"+s);
-        if(entry.getKey() == OggFile.VORBIS_TAGS.METADATA_BLOCK_PICTURE) {
+        if(entry.getKey() == VorbisTags.METADATA_BLOCK_PICTURE) {
           ByteBuffer bb = ByteBuffer.wrap(Base64.decode(s));
           int type = bb.getInt();
           if(type == 3) {
@@ -76,19 +80,31 @@ public class OggTests {
         }
       }
     }
-    assertEquals("This is a Comment!", ohp.getFirstTag(OggFile.VORBIS_TAGS.COMMENT));
+    assertEquals("This is a Comment!", ohp.getFirstTag(VorbisTags.COMMENT));
     assertEquals("SomeTitle", ohp.getTitle());
     assertEquals("SomeArtist", ohp.getArtist());
     assertEquals("SomeAlbum", ohp.getAlbum());
-    assertEquals("01", ohp.getFirstTag(OggFile.VORBIS_TAGS.TRACKNUMBER));
-    assertEquals("Classic", ohp.getFirstTag(OggFile.VORBIS_TAGS.GENRE));
-    assertEquals("1999", ohp.getFirstTag(OggFile.VORBIS_TAGS.DATE));
+    assertEquals("01", ohp.getFirstTag(VorbisTags.TRACKNUMBER));
+    assertEquals("Classic", ohp.getFirstTag(VorbisTags.GENRE));
+    assertEquals("1999", ohp.getFirstTag(VorbisTags.DATE));
     assertEquals(2, ohp.getChannels());
     assertEquals(1152122880, ohp.getSampleRate());
     assertEquals(0, ohp.getVersion());
     BufferedImage bi = ohp.getCover();
     byte[] ba = intsToBytes(bi.getRGB(0, 0, bi.getWidth(), bi.getHeight(), null, 0, bi.getWidth()), (byte) 32);
     assertEquals("d6fe746e830870c83c8b4654f20949fea3bd2eeaa631f6363f22b63bee26f370", hashByteArray(ba));
+  }
+  
+  
+  public static String hashByteArray(byte[] data) throws NoSuchAlgorithmException, IOException {
+    MessageDigest md = MessageDigest.getInstance("SHA-256");
+    md.update(data);
+    byte[] mdbytes = md.digest();
+    StringBuffer sb = new StringBuffer();
+    for (int i = 0; i < mdbytes.length; i++) {
+      sb.append(Integer.toString((mdbytes[i] & 0xff) + 0x100, 16).substring(1));
+    }
+    return sb.toString();
   }
   
   public static byte[] intsToBytes(int[] array, byte bpp) {
