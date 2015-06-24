@@ -1,7 +1,5 @@
 package me.lcw.ogg;
 
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -13,8 +11,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-
-import javax.imageio.ImageIO;
 
 import me.lcw.utils.Base64;
 import me.lcw.utils.BufferedRandomAccessFile;
@@ -113,9 +109,9 @@ public class OggFile {
     return getFirstTag(VorbisTags.ALBUM);
   }
   
-  public BufferedImage getCover() throws IOException {
+  public byte[] getCover() throws IOException {
     if(getFirstTag(VorbisTags.COVERART) != null) {
-      return ImageIO.read(new ByteArrayInputStream(Base64.decode(getFirstTag(VorbisTags.COVERART))));
+      return Base64.decode(getFirstTag(VorbisTags.COVERART));
     }
     if(getFirstTag(VorbisTags.METADATA_BLOCK_PICTURE) != null) {
       for(String s: getListOfTags(VorbisTags.METADATA_BLOCK_PICTURE)) {
@@ -132,7 +128,7 @@ public class OggFile {
           int size = bb.getInt();
           byte[] ba = new byte[size];
           bb.get(ba);
-          return ImageIO.read(new ByteArrayInputStream(ba));
+          return ba;
         }
       }
     }

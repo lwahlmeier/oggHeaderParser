@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
@@ -12,6 +13,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Random;
+
+import javax.imageio.ImageIO;
 
 import me.lcw.utils.Base64;
 
@@ -90,7 +93,7 @@ public class OggTests {
     assertEquals(2, ohp.getChannels());
     assertEquals(1152122880, ohp.getSampleRate());
     assertEquals(0, ohp.getVersion());
-    BufferedImage bi = ohp.getCover();
+    BufferedImage bi = ImageIO.read(new ByteArrayInputStream(ohp.getCover()));
     byte[] ba = intsToBytes(bi.getRGB(0, 0, bi.getWidth(), bi.getHeight(), null, 0, bi.getWidth()), (byte) 32);
     assertEquals("d6fe746e830870c83c8b4654f20949fea3bd2eeaa631f6363f22b63bee26f370", hashByteArray(ba));
   }
